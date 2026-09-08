@@ -26,6 +26,37 @@ API 경로/요청·응답 JSON 형태는 기존 버전과 동일하게 맞춰서
 `http://localhost:8080`에서 뜹니다. 콘솔에 관리자 키(Admin key)가 출력됩니다.
 H2 콘솔은 `http://localhost:8080/h2-console`에서 확인 가능합니다 (JDBC URL: `jdbc:h2:mem:cenlottery`, user: `sa`, password 없음).
 
+## "메모리에 올린다"는 게 무슨 뜻인가 (H2 인메모리 DB 상세 설명)
+
+### 무슨 일이 일어나는가
+
+원래 이 프로젝트는 PostgreSQL(디스크에 파일로 저장되는, 별도로 설치/실행해야 하는 DB 서버)을 쓰도록 만들어졌습니다.
+로컬 개발 중에는 PostgreSQL을 설치하지 않아도 되게, **H2**라는 자바로 만들어진 가벼운 DB를 대신 씁니다. 그중에서도 "인메모리(in-memory) 모드"로 띄우는데, 이건 디스크에 파일을 전혀 만들지 않고 **애플리케이션 프로세스의 RAM(메모리) 안에만** 테이블/데이터를 만든다는 뜻입니다.
+
+- 서버(Spring Boot 프로세스)가 시작될 때 메모리 위에 빈 DB가 새로 생기고, `ddl-auto: update` 설정 덕분에 Hibernate가 엔티티(`User`, `Round`, `Ticket`, `Purchase` ...) 클래스를 보고 테이블을 자동으로 만들어 줍니다.
+- 회원가입/구매 등으로 쌓인 데이터는 전부 이 메모리 위에만 존재합니다.
+- **서버 프로세스를 끄면(Ctrl+C, IDE 정지 버튼, 재빌드 후 재시작 등) 그 순간 메모리가 통째로 사라지므로 데이터도 전부 사라집니다.** 다음에 다시 실행하면 완전히 빈 DB로 새로 시작합니다. (디스크 파일이 아예 없기 때문에, 껐다 켜도 남아있는 게 없습니다.)
+- 반대로 서버가 켜져 있는 동안에는 평범한 관계형 DB처럼 정상 동작합니다 - 트랜잭션, 조회, 제약조건 다 됩니다. "가짜 DB"가 아니라 "저장 위치가 디스크가 아니라 메모리인 진짜 DB"입니다.
+
+### 실제 설정이 어디 있는가
+
+- `src/main/resources/application.yml` - 공통 설정. `spring.profiles.active: ${SPRING_PROFILES_ACTIVE:local}` 로 되어 있어서, 환경변수를 따로 안 주면 **기본값이 `local`**입니다.
+- `src/main/resources/application-local.yml` - `local` 프로필일 때만 덮어쓰는 설정. 여기서 datasource url을 PostgreSQL 대신 H2로 바꿉니다:
+  ```yaml
+  spring:
+    datasource:
+      url: jdbc:h2:mem:cenlottery;MODE=PostgreSQL;DB_CLOSE_DELAY=-1
+  ```
+  - `jdbc:h2:mem:cenlottery` → `mem:` 이 "디스크 파일이 아니라 메모리에 만들어라"는 뜻입니다. (디스크에 저장하고 싶으면 `jdbc:h2:file:...` 로 바꾸면 되는데, 이 프로젝트에서는 안 씁니다.)
+  - `MODE=PostgreSQL` → SQL 문법을 최대한 PostgreSQL과 비슷하게 맞춰서, 나중에 진짜 PostgreSQL로 옮겨도 쿼리가 최대한 그대로 동작하게 해줍니다.
+  - `DB_CLOSE_DELAY=-1` → HikariCP 커넥션 풀이 커넥션을 잠깐씩 반납/재획득해도 그 사이에 메모리 DB가 통째로 날아가 버리지 않게, "마지막 연결이 끊겨도 DB를 지우지 말고 프로세스가 살아있는 동안 유지해라"는 옵션입니다. 이게 없으면 요청 중간에 DB가 사라지는 이상한 버그가 날 수 있습니다.
+- `build.gradle`에 `runtimeOnly 'com.h2database:h2'` 가 추가되어 있어서, PostgreSQL 드라이버(`org.postgresql:postgresql`)와 H2 드라이버가 둘 다 클래스패스에 있고, 어느 프로필로 뜨느냐에 따라 둘 중 하나가 실제로 쓰입니다.
+
+### 언제 이걸 쓰고, 언제 진짜 PostgreSQL을 써야 하나
+
+- **개발 중 화면/로직 확인, 임시 테스트**: `local`(H2) 그대로 쓰면 됩니다. 설치할 것도 없고, 매번 깨끗한 상태로 시작하니 오히려 편합니다.
+- **재시작해도 데이터가 남아있어야 하는 경우, 실제 운영/배포**: 아래 "실제 PostgreSQL로 실행하기"를 따라 `default` 프로필 + 진짜 PostgreSQL로 띄워야 합니다.
+
 ## 실제 PostgreSQL로 실행하기
 
 ### 1. PostgreSQL 준비

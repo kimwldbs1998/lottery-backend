@@ -5,6 +5,7 @@ import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
 import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OrderColumn;
@@ -38,7 +39,7 @@ public class Ticket {
     private long roundNumber;
 
     /** 5 distinct numbers in 1..7. */
-    @ElementCollection
+    @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "ticket_general_balls", joinColumns = @JoinColumn(name = "ticket_id"))
     @OrderColumn(name = "idx")
     @Column(name = "ball")

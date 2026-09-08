@@ -44,7 +44,7 @@ public class Round {
     private BigDecimal poolOverride;
 
     // ----- filled in at settlement time -----
-    @ElementCollection
+    @ElementCollection(fetch = jakarta.persistence.FetchType.EAGER)
     @CollectionTable(name = "round_drawn_general_balls", joinColumns = @jakarta.persistence.JoinColumn(name = "round_number"))
     @OrderColumn(name = "idx")
     @Column(name = "ball")

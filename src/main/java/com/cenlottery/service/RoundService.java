@@ -33,7 +33,21 @@ public class RoundService {
     private final SettlementService settlementService;
 
     /** All round-affecting operations (rollover, force-settle, pool override, purchase-confirm's round check) hold this. */
-    public final ReentrantLock roundLock = new ReentrantLock();
+    private final ReentrantLock roundLock = new ReentrantLock();
+
+    /**
+     * Exposed as methods (not the raw field) so external callers always go through the
+     * proxy and reach the real target instance - direct field access on the CGLIB proxy
+     * that Spring creates for this @Transactional-bearing class reads an uninitialized
+     * field and NPEs, since proxies are instantiated without running field initializers.
+     */
+    public void lockRound() {
+        roundLock.lock();
+    }
+
+    public void unlockRound() {
+        roundLock.unlock();
+    }
 
     public RoundService(RoundRepository roundRepository, TicketRepository ticketRepository,
                          DrawService drawService, SettlementService settlementService) {

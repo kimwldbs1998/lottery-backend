@@ -5,6 +5,7 @@ import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
 import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OrderColumn;
@@ -33,13 +34,13 @@ public class Purchase {
     @Column(nullable = false)
     private long roundNumber;
 
-    @ElementCollection
+    @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "purchase_general_balls", joinColumns = @JoinColumn(name = "purchase_id"))
     @OrderColumn(name = "idx")
     @Column(name = "ball")
     private List<Integer> generalBalls;
 
-    @ElementCollection
+    @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "purchase_powerballs", joinColumns = @JoinColumn(name = "purchase_id"))
     @OrderColumn(name = "idx")
     @Column(name = "powerball")
@@ -58,7 +59,7 @@ public class Purchase {
     @Column(nullable = false, precision = 20, scale = 6)
     private BigDecimal balanceAfter;
 
-    @ElementCollection
+    @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "purchase_ticket_ids", joinColumns = @JoinColumn(name = "purchase_id"))
     @OrderColumn(name = "idx")
     @Column(name = "ticket_id")

@@ -118,7 +118,7 @@ public class PurchaseService {
         }
         String finalKey = idempotencyKey;
 
-        roundService.roundLock.lock();
+        roundService.lockRound();
         try {
             Purchase existing = purchaseRepository.findByIdempotencyKey(finalKey).orElse(null);
             if (existing != null) {
@@ -183,7 +183,7 @@ public class PurchaseService {
 
             return purchaseRepository.save(purchase);
         } finally {
-            roundService.roundLock.unlock();
+            roundService.unlockRound();
         }
     }
 }
