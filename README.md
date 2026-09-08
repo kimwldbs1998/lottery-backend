@@ -94,6 +94,43 @@ $env:SPRING_PROFILES_ACTIVE = "default"
 | `ADMIN_KEY` | 실행마다 랜덤 생성 | `/api/admin/*` 테스트 API에 필요한 키 |
 | `JWT_SECRET` | 실행마다 랜덤 생성 | JWT 서명 키. 여러 인스턴스를 띄우거나 재시작 후에도 로그인 세션을 유지하려면 고정값을 지정하세요 |
 
+## Security / JWT 설정
+
+인증 관련 코드는 `src/main/java/com/cenlottery/` 아래 두 군데로 나뉘어 있습니다 (자바 프로젝트의 표준 경로 규칙대로, 패키지 이름 `com.cenlottery.xxx`가 그대로 `com/cenlottery/xxx` 폴더 경로가 됩니다).
+
+- `config/SecurityConfig.java` - Spring Security 전체 규칙
+- `security/` 폴더 - JWT 발급/검증 로직
+
+### `config/SecurityConfig.java`
+
+- `csrf disable` + `sessionCreationPolicy: STATELESS` - 세션/쿠키를 안 쓰고, 매 요청마다 JWT로만 인증하는 API 서버 방식입니다.
+- `authorizeHttpRequests`에서 **로그인 없이 접근 가능한** 경로를 지정합니다: `/api/health`, `/api/auth/register`, `/api/auth/login`, `/api/rounds/**`, `/api/admin/**`(대신 `X-Admin-Key` 헤더로 별도 검사). 그 외 나머지 경로(`/api/purchase/**` 등)는 전부 `anyRequest().authenticated()`로 막혀 있어서 로그인(JWT) 없이는 401이 납니다.
+- 인증 실패 시(401) 응답을 JSON(`{"error":"SESSION_EXPIRED", ...}`)으로 직접 만들어서 내려주도록 `exceptionHandling`에 커스텀 핸들러를 넣어놨습니다. 프론트가 로그인 여부에 따라 다른 화면을 보여줄 수 있게 하기 위함입니다.
+- CORS는 모든 origin(`*`)을 허용하도록 열려 있습니다 - 개발 편의를 위한 설정이니, 실제 배포 시에는 프론트 도메인만 허용하도록 좁혀야 합니다.
+- `addFilterBefore(jwtFilter, ...)` - 아래 `JwtAuthenticationFilter`를 Spring Security 필터 체인 맨 앞쪽에 끼워 넣어서, 다른 인증 로직보다 먼저 JWT를 읽게 합니다.
+
+### `security/JwtService.java`
+
+- `jjwt` 라이브러리로 HMAC-SHA256 서명 방식의 JWT를 발급(`issue`)/검증(`verify`)합니다.
+- 서명 키는 환경변수 `JWT_SECRET`(→ `app.jwt.secret`)로 지정합니다. **지정하지 않으면 프로세스가 시작될 때마다 랜덤 키를 새로 만듭니다** - 즉, 서버를 재시작하면 그 전에 발급된 토큰(로그인 상태)이 전부 무효화되고 다시 로그인해야 합니다. 로컬 개발 중 "분명 로그인했는데 자꾸 로그아웃된다" 싶으면 대부분 이게 원인입니다 (서버를 재시작했기 때문).
+- 토큰 만료 시간은 `app.jwt.expiry-ms` (기본 12시간 = `43200000`ms).
+
+### `security/JwtAuthenticationFilter.java`
+
+- 매 요청마다 `Authorization: Bearer <토큰>` 헤더를 확인합니다.
+- 토큰이 있고 유효하면 Spring Security의 `SecurityContext`에 로그인 사용자로 등록해줍니다. 헤더가 없거나 토큰이 유효하지 않아도 이 필터 자체는 요청을 막지 않고 그냥 통과시킵니다 - 실제로 막는 건 위 `SecurityConfig`의 `authorizeHttpRequests` 규칙입니다.
+
+### 관리자(Admin) 인증은 별도
+
+`/api/admin/**`은 JWT가 아니라 `config/AdminKeyHolder.java`가 들고 있는 별도의 관리자 키(`X-Admin-Key` 헤더)로 보호됩니다. 이 키도 `ADMIN_KEY` 환경변수를 안 주면 서버 시작 시마다 랜덤 생성되고, 콘솔에 출력됩니다.
+
+### 관련 환경 변수
+
+| 변수 | 기본값 | 설명 |
+|---|---|---|
+| `JWT_SECRET` | 실행마다 랜덤 생성 | 고정하지 않으면 서버 재시작할 때마다 기존 로그인 세션이 전부 무효화됩니다. 여러 인스턴스를 띄우거나 재시작 후에도 세션을 유지하려면 반드시 고정값을 지정하세요 |
+| `ADMIN_KEY` | 실행마다 랜덤 생성 | `/api/admin/*` 테스트 API 호출 시 `X-Admin-Key` 헤더에 넣어야 하는 값. 서버 콘솔 출력에서 확인 가능 |
+
 ## 원본(순수 Java) 버전과의 차이
 
 - HTTP 서버(`com.sun.net.httpserver`) → Spring MVC
