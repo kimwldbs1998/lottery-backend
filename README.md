@@ -23,8 +23,8 @@ API 경로/요청·응답 JSON 형태는 기존 버전과 동일하게 맞춰서
 .\gradlew.bat bootRun     # Windows
 ```
 
-`http://localhost:8080`에서 뜹니다. 콘솔에 관리자 키(Admin key)가 출력됩니다.
-H2 콘솔은 `http://localhost:8080/h2-console`에서 확인 가능합니다 (JDBC URL: `jdbc:h2:mem:cenlottery`, user: `sa`, password 없음).
+`http://localhost:7070`에서 뜹니다. 콘솔에 관리자 키(Admin key)가 출력됩니다.
+H2 콘솔은 `http://localhost:7070/h2-console`에서 확인 가능합니다 (JDBC URL: `jdbc:h2:mem:cenlottery`, user: `sa`, password 없음).
 
 ## "메모리에 올린다"는 게 무슨 뜻인가 (H2 인메모리 DB 상세 설명)
 
@@ -88,7 +88,7 @@ $env:SPRING_PROFILES_ACTIVE = "default"
 
 | 변수 | 기본값 | 설명 |
 |---|---|---|
-| `PORT` | `8080` | HTTP 포트 |
+| `PORT` | `7070` | HTTP 포트 |
 | `SPRING_PROFILES_ACTIVE` | `local` | `local`(H2, DB 설치 불필요) 또는 `default`(PostgreSQL 연결) |
 | `DB_HOST` / `DB_PORT` / `DB_NAME` / `DB_USER` / `DB_PASSWORD` | `localhost` / `5432` / `cenlottery` / `cenlottery` / `cenlottery` | PostgreSQL 접속 정보 (`default` 프로필일 때만 사용) |
 | `ADMIN_KEY` | 실행마다 랜덤 생성 | `/api/admin/*` 테스트 API에 필요한 키 |

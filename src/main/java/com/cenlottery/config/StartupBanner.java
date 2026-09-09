@@ -18,7 +18,7 @@ public class StartupBanner implements ApplicationRunner {
 
     @Override
     public void run(ApplicationArguments args) {
-        String port = env.getProperty("server.port", "8080");
+        String port = env.getProperty("server.port", "7070");
         System.out.println("=======================================================");
         System.out.println(" CenLottery 파워픽 backend (Spring Boot) started on http://localhost:" + port);
         System.out.println(" Admin key (for /api/admin/* test endpoints): " + adminKeyHolder.getKey());
